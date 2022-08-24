@@ -88,14 +88,10 @@ class SMTP:
         This function allows to change the logging backend, either output or file as backend
         It also allows to set the logging level (whether to display only critical/error/info/debug.
         for example::
-
             yag = yagmail.SMTP()
             yag.set_logging(yagmail.logging.DEBUG)  # to see everything
-
         and::
-
             yagmail.set_logging(yagmail.logging.DEBUG, 'somelocalfile.log')
-
         lastly, a log_level of :py:class:`None` will make sure there is no I/O.
         """
         self.log = get_logger(log_level, file_path_name)
@@ -135,8 +131,8 @@ class SMTP:
         )
 
         recipients = addresses["recipients"]
-        msg_bytes = msg.as_bytes()
-        return recipients, msg_bytes
+        msg_strings = msg.as_string()
+        return recipients, msg_strings
 
     def send(
         self,
@@ -154,7 +150,7 @@ class SMTP:
     ):
         """ Use this to send an email with gmail"""
         self.login()
-        recipients, msg_bytes = self.prepare_send(
+        recipients, msg_strings = self.prepare_send(
             to,
             subject,
             contents,
@@ -167,15 +163,15 @@ class SMTP:
             group_messages,
         )
         if preview_only:
-            return recipients, msg_bytes
+            return recipients, msg_strings
 
-        return self._attempt_send(recipients, msg_bytes)
+        return self._attempt_send(recipients, msg_strings)
 
-    def _attempt_send(self, recipients, msg_bytes):
+    def _attempt_send(self, recipients, msg_strings):
         attempts = 0
         while attempts < 3:
             try:
-                result = self.smtp.sendmail(self.user, recipients, msg_bytes)
+                result = self.smtp.sendmail(self.user, recipients, msg_strings)
                 self.log.info("Message sent to %s", recipients)
                 self.num_mail_sent += 1
                 return result
@@ -183,7 +179,7 @@ class SMTP:
                 self.log.error(e)
                 attempts += 1
                 time.sleep(attempts * 3)
-        self.unsent.append((recipients, msg_string))
+        self.unsent.append((recipients, msg_strings))
         return False
 
     def send_unsent(self):
@@ -192,8 +188,8 @@ class SMTP:
         Use this function to attempt to send these again
         """
         for i in range(len(self.unsent)):
-            recipients, msg_string = self.unsent.pop(i)
-            self._attempt_send(recipients, msg_string)
+            recipients, msg_strings = self.unsent.pop(i)
+            self._attempt_send(recipients, msg_strings)
 
     def close(self):
         """ Close the connection to the SMTP server """
